@@ -1,5 +1,6 @@
 pub mod backfill;
 pub mod identity;
+pub mod marketplace;
 pub mod metadata;
 pub mod provider;
 pub mod reputation;
@@ -43,12 +44,13 @@ pub async fn run_indexer(pool: PgPool) {
             chain.rpc_url.clone()
         };
         tracing::info!(
-            "  Chain {} | rpc={} | start_block={} | identity={} | reputation={}",
+            "  Chain {} | rpc={} | start_block={} | identity={} | reputation={} | marketplace={}",
             chain.chain_id,
             masked_rpc,
             chain.start_block,
             chain.identity_address,
-            chain.reputation_address
+            chain.reputation_address,
+            chain.marketplace_address.map(|a| a.to_string()).unwrap_or_else(|| "none".to_string())
         );
     }
 
@@ -90,6 +92,7 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
 
     let identity_addr = chain.identity_address.to_string();
     let reputation_addr = chain.reputation_address.to_string();
+    let marketplace_addr = chain.marketplace_address.map(|a| a.to_string());
 
     let identity_last = crate::db::indexer_state::get_last_block(pool, chain.chain_id, &identity_addr)
         .await?
@@ -97,16 +100,24 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
     let reputation_last = crate::db::indexer_state::get_last_block(pool, chain.chain_id, &reputation_addr)
         .await?
         .unwrap_or(chain.start_block as i64 - 1);
+    let marketplace_last = if let Some(ref addr) = marketplace_addr {
+        crate::db::indexer_state::get_last_block(pool, chain.chain_id, addr)
+            .await?
+            .unwrap_or(chain.start_block as i64 - 1)
+    } else {
+        latest_block as i64 // treated as caught up
+    };
 
     let identity_behind = identity_last < latest_block as i64;
     let reputation_behind = reputation_last < latest_block as i64;
+    let marketplace_behind = marketplace_last < latest_block as i64;
 
-    if !identity_behind && !reputation_behind {
+    if !identity_behind && !reputation_behind && !marketplace_behind {
         return Ok(true);
     }
 
-    // Run identity and reputation indexing in parallel
-    let (identity_result, reputation_result) = tokio::join!(
+    // Run identity, reputation, and marketplace indexing in parallel
+    let (identity_result, reputation_result, marketplace_result) = tokio::join!(
         index_contract_parallel(
             pool,
             &provider,
@@ -124,6 +135,15 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
             latest_block,
             batch_size,
             ContractType::Reputation,
+        ),
+        index_contract_parallel(
+            pool,
+            &provider,
+            chain,
+            marketplace_last,
+            latest_block,
+            batch_size,
+            ContractType::Marketplace,
         ),
     );
 
@@ -145,6 +165,17 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
         tracing::error!(chain_id = chain.chain_id, "Reputation indexing error: {:?}", e);
     }
 
+    // Update indexer state for marketplace
+    if let Some(ref addr) = marketplace_addr {
+        if let Ok(Some(last)) = marketplace_result {
+            crate::db::indexer_state::update_last_block_with_name(
+                pool, chain.chain_id, addr, last, Some("MoltMarketplace"),
+            ).await?;
+        } else if let Err(e) = marketplace_result {
+            tracing::error!(chain_id = chain.chain_id, "Marketplace indexing error: {:?}", e);
+        }
+    }
+
     Ok(false)
 }
 
@@ -152,6 +183,7 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
 enum ContractType {
     Identity,
     Reputation,
+    Marketplace,
 }
 
 /// Run up to PARALLEL_BATCHES concurrent batch indexing tasks for a single contract.
@@ -169,9 +201,15 @@ async fn index_contract_parallel(
         return Ok(None);
     }
 
+    // Skip marketplace if no address configured
+    if matches!(contract_type, ContractType::Marketplace) && chain.marketplace_address.is_none() {
+        return Ok(None);
+    }
+
     let contract_name = match contract_type {
         ContractType::Identity => "identity",
         ContractType::Reputation => "reputation",
+        ContractType::Marketplace => "marketplace",
     };
 
     // Build batch ranges
@@ -207,6 +245,9 @@ async fn index_contract_parallel(
             ContractType::Reputation => {
                 reputation::index_reputation_events(pool, &prov, chain, from, to).await?;
             }
+            ContractType::Marketplace => {
+                marketplace::index_marketplace_events(pool, &prov, chain, from, to).await?;
+            }
         }
         return Ok(Some(to as i64));
     }
@@ -237,6 +278,9 @@ async fn index_contract_parallel(
                 }
                 ContractType::Reputation => {
                     reputation::index_reputation_events(&pool, &prov, &chain, from, to).await
+                }
+                ContractType::Marketplace => {
+                    marketplace::index_marketplace_events(&pool, &prov, &chain, from, to).await
                 }
             }
         }));

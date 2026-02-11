@@ -15,9 +15,9 @@ use crate::types::{NewActivity, NewAgent};
 // Load IdentityRegistry ABI from official erc-8004 contracts
 sol!(IdentityRegistry, "abi/IdentityRegistry.json");
 
-use IdentityRegistry::{Registered, URIUpdated, MetadataSet};
+use IdentityRegistry::{Registered, URIUpdated, MetadataSet, Transfer};
 
-/// Index identity events (Registered, URIUpdated, MetadataSet) for a block range.
+/// Index identity events (Registered, URIUpdated, MetadataSet, Transfer) for a block range.
 pub async fn index_identity_events(
     pool: &PgPool,
     provider: &HttpProvider,
@@ -34,6 +34,7 @@ pub async fn index_identity_events(
             Registered::SIGNATURE_HASH,
             URIUpdated::SIGNATURE_HASH,
             MetadataSet::SIGNATURE_HASH,
+            Transfer::SIGNATURE_HASH,
         ]);
 
     let logs = provider.get_logs(&filter).await?;
@@ -286,6 +287,60 @@ pub async fn index_identity_events(
                 Err(e) => {
                     tracing::error!(
                         "Failed to decode MetadataSet event at block {}: {:?}",
+                        block_number,
+                        e
+                    );
+                }
+            }
+        } else if topic0 == Transfer::SIGNATURE_HASH {
+            match log.log_decode::<Transfer>() {
+                Ok(decoded) => {
+                    let event = &decoded.inner.data;
+                    let from = format!("{:#x}", event.from);
+                    let to = format!("{:#x}", event.to);
+                    let token_id = event.tokenId.to::<u64>() as i64;
+
+                    // Skip mint events (from == zero address) — handled by Registered
+                    let zero = "0x0000000000000000000000000000000000000000";
+                    if from == zero {
+                        continue;
+                    }
+
+                    tracing::info!(
+                        chain_id = chain.chain_id,
+                        agent_id = token_id,
+                        "Transfer event: agent {} from {} to {}",
+                        token_id,
+                        from,
+                        to
+                    );
+
+                    // Update agent owner in DB
+                    if let Err(e) = db::agents::update_agent_owner(pool, token_id, chain.chain_id, &to).await {
+                        tracing::error!("Failed to update owner for agent {}: {:?}", token_id, e);
+                    }
+
+                    // Insert activity
+                    let activity = NewActivity {
+                        agent_id: token_id,
+                        chain_id: chain.chain_id,
+                        event_type: "Transfer".to_string(),
+                        event_data: Some(serde_json::json!({
+                            "from": from,
+                            "to": to,
+                        })),
+                        block_number,
+                        block_timestamp,
+                        tx_hash: tx_hash.clone(),
+                        log_index,
+                    };
+                    if let Err(e) = db::activity::insert_activity(pool, &activity).await {
+                        tracing::error!("Failed to insert Transfer activity: {:?}", e);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to decode Transfer event at block {}: {:?}",
                         block_number,
                         e
                     );

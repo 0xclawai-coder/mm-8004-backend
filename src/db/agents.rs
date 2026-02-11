@@ -118,6 +118,29 @@ pub async fn get_agent_by_id(
     Ok(row)
 }
 
+/// Update the owner of an agent when a Transfer event is detected.
+pub async fn update_agent_owner(
+    pool: &PgPool,
+    agent_id: i64,
+    chain_id: i32,
+    new_owner: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE agents
+        SET owner = $3, updated_at = NOW()
+        WHERE agent_id = $1 AND chain_id = $2
+        "#,
+    )
+    .bind(agent_id)
+    .bind(chain_id)
+    .bind(new_owner)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// Insert or update an agent on conflict (agent_id, chain_id).
 pub async fn upsert_agent(pool: &PgPool, agent: &NewAgent) -> Result<(), sqlx::Error> {
     sqlx::query(

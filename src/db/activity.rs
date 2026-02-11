@@ -22,6 +22,7 @@ pub async fn get_activities(
           AND ($3::TEXT IS NULL
             OR ($3 = 'identity' AND event_type IN ('Registered', 'URIUpdated', 'MetadataSet'))
             OR ($3 = 'reputation' AND event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
+            OR ($3 = 'marketplace' AND event_type LIKE 'marketplace:%')
             OR event_type = $3)
         ORDER BY block_number DESC, log_index DESC
         LIMIT $4 OFFSET $5
@@ -43,6 +44,7 @@ pub async fn get_activities(
           AND ($3::TEXT IS NULL
             OR ($3 = 'identity' AND event_type IN ('Registered', 'URIUpdated', 'MetadataSet'))
             OR ($3 = 'reputation' AND event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
+            OR ($3 = 'marketplace' AND event_type LIKE 'marketplace:%')
             OR event_type = $3)
         "#,
     )

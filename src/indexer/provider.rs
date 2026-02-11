@@ -10,6 +10,8 @@ pub struct ChainConfig {
     pub rpc_url: String,
     pub identity_address: Address,
     pub reputation_address: Address,
+    /// MoltMarketplace contract address (None if not deployed yet).
+    pub marketplace_address: Option<Address>,
     /// Block number where the contracts were deployed. Indexer starts from here.
     pub start_block: u64,
 }
@@ -81,6 +83,10 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
         let rpc_url = std::env::var("MONAD_MAINNET_RPC")
             .unwrap_or_else(|_| "https://rpc.monad.xyz".to_string());
 
+        let marketplace_address = std::env::var("MONAD_MAINNET_MARKETPLACE")
+            .ok()
+            .and_then(|s| s.parse::<Address>().ok());
+
         configs.push(ChainConfig {
             chain_id: 143,
             rpc_url,
@@ -90,6 +96,7 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
             reputation_address: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
                 .parse::<Address>()
                 .expect("Invalid mainnet reputation address"),
+            marketplace_address,
             start_block: 52_952_790,
         });
     }
@@ -97,6 +104,10 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
     if index_testnet != "false" {
         let rpc_url = std::env::var("MONAD_TESTNET_RPC")
             .unwrap_or_else(|_| "https://testnet-rpc.monad.xyz".to_string());
+
+        let marketplace_address = std::env::var("MONAD_TESTNET_MARKETPLACE")
+            .ok()
+            .and_then(|s| s.parse::<Address>().ok());
 
         configs.push(ChainConfig {
             chain_id: 10143,
@@ -107,6 +118,7 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
             reputation_address: "0x8004B663056A597Dffe9eCcC1965A193B7388713"
                 .parse::<Address>()
                 .expect("Invalid testnet reputation address"),
+            marketplace_address,
             start_block: 10_391_697,
         });
     }

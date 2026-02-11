@@ -9,7 +9,7 @@ use axum::{
 use crate::db;
 use crate::types::{
     ActivityParams, ActivityResponse, AgentListParams, AgentListResponse, ErrorResponse,
-    ReputationParams, ReputationResponse,
+    PaginationParams, ReputationParams, ReputationResponse,
 };
 use crate::AppState;
 
@@ -19,6 +19,7 @@ pub fn router() -> Router<AppState> {
         .route("/agents/{id}", get(get_agent))
         .route("/agents/{id}/reputation", get(get_agent_reputation))
         .route("/agents/{id}/activity", get(get_agent_activity))
+        .route("/agents/{id}/marketplace", get(get_agent_marketplace))
 }
 
 /// Parse an agent path ID in the format "chainId-agentId" (e.g., "143-1")
@@ -202,6 +203,44 @@ async fn get_agent_activity(
             Json(ErrorResponse {
                 error: "Internal Server Error".to_string(),
                 message: "Failed to fetch activities".to_string(),
+                status: 500,
+            }),
+        )
+    })?;
+
+    Ok(Json(ActivityResponse {
+        activities,
+        total,
+        page: params.page(),
+        limit: params.limit(),
+    }))
+}
+
+/// GET /api/agents/:id/marketplace — get marketplace activity for an agent NFT
+async fn get_agent_marketplace(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(params): Query<PaginationParams>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let (chain_id, agent_id) = parse_agent_id(&id)?;
+
+    // Fetch marketplace-related activities for this agent
+    let (activities, total) = db::activity::get_activities(
+        &state.pool,
+        agent_id,
+        chain_id,
+        Some("marketplace"),
+        params.offset(),
+        params.limit(),
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to get agent marketplace history: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Internal Server Error".to_string(),
+                message: "Failed to fetch marketplace history".to_string(),
                 status: 500,
             }),
         )

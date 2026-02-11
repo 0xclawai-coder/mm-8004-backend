@@ -5,6 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use bigdecimal::BigDecimal;
 use std::collections::HashMap;
 
 use crate::types::{CategoryCount, ErrorResponse, StatsResponse};
@@ -95,6 +96,32 @@ async fn get_stats(
     .await
     .map_err(map_err)?;
 
+    // Marketplace stats
+    let (total_listings,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings")
+            .fetch_one(&state.pool)
+            .await
+            .map_err(map_err)?;
+
+    let (active_listings,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings WHERE status = 'Active'")
+            .fetch_one(&state.pool)
+            .await
+            .map_err(map_err)?;
+
+    let (total_sales,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings WHERE status = 'Sold'")
+            .fetch_one(&state.pool)
+            .await
+            .map_err(map_err)?;
+
+    let total_volume: BigDecimal = sqlx::query_scalar(
+        "SELECT COALESCE(SUM(sold_price), 0) FROM marketplace_listings WHERE status = 'Sold'",
+    )
+    .fetch_one(&state.pool)
+    .await
+    .map_err(map_err)?;
+
     Ok(Json(StatsResponse {
         total_agents,
         total_feedbacks,
@@ -103,5 +130,9 @@ async fn get_stats(
         top_categories,
         recent_registrations_24h,
         recent_feedbacks_24h,
+        total_listings,
+        active_listings,
+        total_sales,
+        total_volume,
     }))
 }

@@ -95,6 +95,154 @@ pub struct IndexerState {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
+// ─── Marketplace Database Models ──────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceListing {
+    pub id: i32,
+    pub listing_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub price: BigDecimal,
+    pub expiry: i64,
+    pub status: String,
+    pub buyer: Option<String>,
+    pub sold_price: Option<BigDecimal>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceOffer {
+    pub id: i32,
+    pub offer_id: i64,
+    pub chain_id: i32,
+    pub offerer: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub amount: BigDecimal,
+    pub expiry: i64,
+    pub status: String,
+    pub accepted_by: Option<String>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceCollectionOffer {
+    pub id: i32,
+    pub offer_id: i64,
+    pub chain_id: i32,
+    pub offerer: String,
+    pub nft_contract: String,
+    pub payment_token: String,
+    pub amount: BigDecimal,
+    pub expiry: i64,
+    pub status: String,
+    pub accepted_by: Option<String>,
+    pub accepted_token_id: Option<BigDecimal>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceAuction {
+    pub id: i32,
+    pub auction_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub start_price: BigDecimal,
+    pub reserve_price: BigDecimal,
+    pub buy_now_price: BigDecimal,
+    pub highest_bid: Option<BigDecimal>,
+    pub highest_bidder: Option<String>,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub bid_count: Option<i32>,
+    pub status: String,
+    pub winner: Option<String>,
+    pub settled_price: Option<BigDecimal>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceAuctionBid {
+    pub id: i32,
+    pub auction_id: i64,
+    pub chain_id: i32,
+    pub bidder: String,
+    pub amount: BigDecimal,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceDutchAuction {
+    pub id: i32,
+    pub auction_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub start_price: BigDecimal,
+    pub end_price: BigDecimal,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub status: String,
+    pub buyer: Option<String>,
+    pub sold_price: Option<BigDecimal>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MarketplaceBundle {
+    pub id: i32,
+    pub bundle_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contracts: Vec<String>,
+    pub token_ids: Vec<BigDecimal>,
+    pub payment_token: String,
+    pub price: BigDecimal,
+    pub expiry: i64,
+    pub item_count: i32,
+    pub status: String,
+    pub buyer: Option<String>,
+    pub sold_price: Option<BigDecimal>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
 // ─── API Response Types ────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -199,6 +347,82 @@ pub struct StatsResponse {
     pub top_categories: Vec<CategoryCount>,
     pub recent_registrations_24h: i64,
     pub recent_feedbacks_24h: i64,
+    // Marketplace stats
+    pub total_listings: i64,
+    pub active_listings: i64,
+    pub total_sales: i64,
+    pub total_volume: BigDecimal,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceListingListResponse {
+    pub listings: Vec<MarketplaceListing>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceOfferListResponse {
+    pub offers: Vec<MarketplaceOffer>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceCollectionOfferListResponse {
+    pub offers: Vec<MarketplaceCollectionOffer>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceAuctionListResponse {
+    pub auctions: Vec<MarketplaceAuction>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceAuctionDetailResponse {
+    #[serde(flatten)]
+    pub auction: MarketplaceAuction,
+    pub bids: Vec<MarketplaceAuctionBid>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceDutchAuctionListResponse {
+    pub auctions: Vec<MarketplaceDutchAuction>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceBundleListResponse {
+    pub bundles: Vec<MarketplaceBundle>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceUserPortfolioResponse {
+    pub listings: Vec<MarketplaceListing>,
+    pub offers: Vec<MarketplaceOffer>,
+    pub bids: Vec<MarketplaceAuctionBid>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketplaceStatsResponse {
+    pub total_listings: i64,
+    pub active_listings: i64,
+    pub total_sales: i64,
+    pub total_volume: BigDecimal,
+    pub active_auctions: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -303,6 +527,134 @@ impl LeaderboardParams {
     }
 }
 
+// ─── Marketplace Query Parameters ────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceListParams {
+    pub chain_id: Option<i32>,
+    pub nft_contract: Option<String>,
+    pub seller: Option<String>,
+    pub status: Option<String>,
+    pub sort: Option<String>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl MarketplaceListParams {
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.limit()
+    }
+    pub fn status(&self) -> &str {
+        self.status.as_deref().unwrap_or("Active")
+    }
+    pub fn sort(&self) -> &str {
+        self.sort.as_deref().unwrap_or("recent")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceOfferParams {
+    pub chain_id: Option<i32>,
+    pub nft_contract: Option<String>,
+    pub token_id: Option<String>,
+    pub offerer: Option<String>,
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl MarketplaceOfferParams {
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.limit()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceCollectionOfferParams {
+    pub chain_id: Option<i32>,
+    pub nft_contract: Option<String>,
+    pub offerer: Option<String>,
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl MarketplaceCollectionOfferParams {
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.limit()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceAuctionParams {
+    pub chain_id: Option<i32>,
+    pub nft_contract: Option<String>,
+    pub seller: Option<String>,
+    pub status: Option<String>,
+    pub sort: Option<String>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl MarketplaceAuctionParams {
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.limit()
+    }
+    pub fn sort(&self) -> &str {
+        self.sort.as_deref().unwrap_or("recent")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceBundleParams {
+    pub chain_id: Option<i32>,
+    pub seller: Option<String>,
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
+impl MarketplaceBundleParams {
+    pub fn page(&self) -> i64 {
+        self.page.unwrap_or(1).max(1)
+    }
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20).clamp(1, 100)
+    }
+    pub fn offset(&self) -> i64 {
+        (self.page() - 1) * self.limit()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketplaceUserParams {
+    pub chain_id: Option<i32>,
+}
+
 // ─── Insert helpers (for DB write operations) ──────────────────────────
 
 #[derive(Debug, Clone)]
@@ -351,4 +703,101 @@ pub struct NewActivity {
     pub block_timestamp: Option<DateTime<Utc>>,
     pub tx_hash: String,
     pub log_index: i32,
+}
+
+// ─── Marketplace Insert Helpers ─────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceListing {
+    pub listing_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub price: BigDecimal,
+    pub expiry: i64,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceOffer {
+    pub offer_id: i64,
+    pub chain_id: i32,
+    pub offerer: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub amount: BigDecimal,
+    pub expiry: i64,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceCollectionOffer {
+    pub offer_id: i64,
+    pub chain_id: i32,
+    pub offerer: String,
+    pub nft_contract: String,
+    pub payment_token: String,
+    pub amount: BigDecimal,
+    pub expiry: i64,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceAuction {
+    pub auction_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub start_price: BigDecimal,
+    pub reserve_price: BigDecimal,
+    pub buy_now_price: BigDecimal,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceDutchAuction {
+    pub auction_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contract: String,
+    pub token_id: BigDecimal,
+    pub payment_token: String,
+    pub start_price: BigDecimal,
+    pub end_price: BigDecimal,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMarketplaceBundle {
+    pub bundle_id: i64,
+    pub chain_id: i32,
+    pub seller: String,
+    pub nft_contracts: Vec<String>,
+    pub token_ids: Vec<BigDecimal>,
+    pub payment_token: String,
+    pub price: BigDecimal,
+    pub expiry: i64,
+    pub item_count: i32,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
 }
