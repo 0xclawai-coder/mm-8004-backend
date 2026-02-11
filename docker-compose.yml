@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nad8004
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/nad8004
+      MONAD_MAINNET_RPC: https://rpc.monad.xyz
+      MONAD_TESTNET_RPC: https://testnet-rpc.monad.xyz
+      PORT: "3001"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
