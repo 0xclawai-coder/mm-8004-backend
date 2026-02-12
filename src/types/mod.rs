@@ -87,6 +87,22 @@ pub struct Activity {
     pub log_index: i32,
 }
 
+/// Activity with agent name/image joined from agents table (for global feeds).
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct GlobalActivity {
+    pub id: i32,
+    pub agent_id: i64,
+    pub chain_id: i32,
+    pub event_type: String,
+    pub event_data: Option<serde_json::Value>,
+    pub block_number: i64,
+    pub block_timestamp: Option<DateTime<Utc>>,
+    pub tx_hash: String,
+    pub log_index: i32,
+    pub agent_name: Option<String>,
+    pub agent_image: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct IndexerState {
     pub chain_id: i32,
@@ -347,6 +363,14 @@ pub struct ReputationResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ActivityResponse {
     pub activities: Vec<Activity>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GlobalActivityResponse {
+    pub activities: Vec<GlobalActivity>,
     pub total: i64,
     pub page: i64,
     pub limit: i64,

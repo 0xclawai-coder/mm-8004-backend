@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::{Activity, NewActivity};
+use crate::types::{Activity, GlobalActivity, NewActivity};
 
 /// Get paginated activity log for an agent, optionally filtered by event_type.
 pub async fn get_activities(
@@ -50,6 +50,55 @@ pub async fn get_activities(
     )
     .bind(agent_id)
     .bind(chain_id)
+    .bind(event_type)
+    .fetch_one(pool)
+    .await?;
+
+    Ok((activities, total.0))
+}
+
+/// Get paginated global activity log (all agents), optionally filtered by event_type.
+/// Includes agent name via LEFT JOIN.
+pub async fn get_global_activities(
+    pool: &PgPool,
+    event_type: Option<&str>,
+    offset: i64,
+    limit: i64,
+) -> Result<(Vec<GlobalActivity>, i64), sqlx::Error> {
+    let activities: Vec<GlobalActivity> = sqlx::query_as(
+        r#"
+        SELECT a.id, a.agent_id, a.chain_id, a.event_type, a.event_data,
+               a.block_number, COALESCE(a.block_timestamp, a.created_at) AS block_timestamp,
+               a.tx_hash, a.log_index,
+               ag.name AS agent_name, ag.image AS agent_image
+        FROM activity_log a
+        LEFT JOIN agents ag ON ag.agent_id = a.agent_id AND ag.chain_id = a.chain_id
+        WHERE ($1::TEXT IS NULL
+            OR ($1 = 'identity' AND a.event_type IN ('Registered', 'URIUpdated', 'MetadataSet'))
+            OR ($1 = 'reputation' AND a.event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
+            OR ($1 = 'marketplace' AND a.event_type LIKE 'marketplace:%')
+            OR a.event_type = $1)
+        ORDER BY a.block_number DESC, a.log_index DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(event_type)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+
+    let total: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM activity_log a
+        WHERE ($1::TEXT IS NULL
+            OR ($1 = 'identity' AND a.event_type IN ('Registered', 'URIUpdated', 'MetadataSet'))
+            OR ($1 = 'reputation' AND a.event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
+            OR ($1 = 'marketplace' AND a.event_type LIKE 'marketplace:%')
+            OR a.event_type = $1)
+        "#,
+    )
     .bind(event_type)
     .fetch_one(pool)
     .await?;
