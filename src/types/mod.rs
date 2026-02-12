@@ -243,6 +243,30 @@ pub struct MarketplaceBundle {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
+// ─── Score by Tag ─────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ScoreByTagRow {
+    pub score_type: String,
+    pub label: Option<String>,
+    pub value: f64,
+    pub count: i64,
+    pub min_value: Option<f64>,
+    pub max_value: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScoreByTag {
+    pub score_type: String,
+    pub label: Option<String>,
+    pub value: f64,
+    pub count: i64,
+    pub min_value: Option<f64>,
+    pub max_value: Option<f64>,
+    /// Scale classification: "percentage" | "elo" | "boolean" | "raw"
+    pub scale: String,
+}
+
 // ─── API Response Types ────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
@@ -270,7 +294,7 @@ pub struct AgentListResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
-pub struct AgentDetailResponse {
+pub struct AgentDetailRow {
     pub agent_id: i64,
     pub chain_id: i32,
     pub owner: String,
@@ -287,6 +311,13 @@ pub struct AgentDetailResponse {
     pub positive_feedback_count: Option<i64>,
     pub negative_feedback_count: Option<i64>,
     pub block_timestamp: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentDetailResponse {
+    #[serde(flatten)]
+    pub agent: AgentDetailRow,
+    pub scores: Vec<ScoreByTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

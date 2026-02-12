@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::types::{AgentDetailResponse, AgentListItem, NewAgent};
+use crate::types::{AgentDetailRow, AgentListItem, NewAgent, ScoreByTag, ScoreByTagRow};
 
 /// Get a paginated list of agents with optional filtering, search, and sorting.
 /// LEFT JOINs feedbacks to compute average reputation score and feedback count.
@@ -79,13 +79,100 @@ pub async fn get_agents(
     Ok((agents, total.0))
 }
 
+/// Classify a score into a scale type based on tag name and value range.
+fn classify_scale(tag: &str, min_val: f64, max_val: f64) -> &'static str {
+    if tag == "elo" {
+        return "elo";
+    }
+    if tag == "slash" {
+        return "raw";
+    }
+    // Boolean: values are exactly 0, 1, or -1
+    if (min_val == 0.0 || min_val == 1.0 || min_val == -1.0)
+        && (max_val == 0.0 || max_val == 1.0 || max_val == -1.0)
+    {
+        return "boolean";
+    }
+    // Percentage: all values in 0~100 range
+    if min_val >= 0.0 && max_val <= 100.0 {
+        return "percentage";
+    }
+    "raw"
+}
+
+/// Sort priority: percentage first, then elo, then others
+fn scale_priority(scale: &str) -> u8 {
+    match scale {
+        "percentage" => 0,
+        "elo" => 1,
+        "boolean" => 2,
+        _ => 3,
+    }
+}
+
+/// Get scores grouped by tag1 for an agent, classified by scale and sorted.
+pub async fn get_scores_by_tag(
+    pool: &PgPool,
+    agent_id: i64,
+    chain_id: i32,
+) -> Result<Vec<ScoreByTag>, sqlx::Error> {
+    let rows: Vec<ScoreByTagRow> = sqlx::query_as(
+        r#"
+        SELECT
+            tag1 AS score_type,
+            MODE() WITHIN GROUP (ORDER BY tag2) AS label,
+            AVG(value / POWER(10, COALESCE(value_decimals, 0)))::FLOAT8 AS value,
+            COUNT(*)::BIGINT AS count,
+            MIN(value / POWER(10, COALESCE(value_decimals, 0)))::FLOAT8 AS min_value,
+            MAX(value / POWER(10, COALESCE(value_decimals, 0)))::FLOAT8 AS max_value
+        FROM feedbacks
+        WHERE agent_id = $1 AND chain_id = $2 AND revoked = false AND tag1 IS NOT NULL
+        GROUP BY tag1
+        ORDER BY count DESC
+        "#,
+    )
+    .bind(agent_id)
+    .bind(chain_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut scores: Vec<ScoreByTag> = rows
+        .into_iter()
+        .map(|r| {
+            let scale = classify_scale(
+                &r.score_type,
+                r.min_value.unwrap_or(0.0),
+                r.max_value.unwrap_or(0.0),
+            );
+            ScoreByTag {
+                score_type: r.score_type,
+                label: r.label,
+                value: r.value,
+                count: r.count,
+                min_value: r.min_value,
+                max_value: r.max_value,
+                scale: scale.to_string(),
+            }
+        })
+        .collect();
+
+    // Sort: percentage first, then elo, then boolean, then raw. Within same scale, by count desc.
+    scores.sort_by(|a, b| {
+        scale_priority(&a.scale)
+            .cmp(&scale_priority(&b.scale))
+            .then(b.count.cmp(&a.count))
+    });
+
+    Ok(scores)
+}
+
 /// Get a single agent by agent_id and chain_id, with reputation data.
 pub async fn get_agent_by_id(
     pool: &PgPool,
     agent_id: i64,
     chain_id: i32,
-) -> Result<Option<AgentDetailResponse>, sqlx::Error> {
-    let row: Option<AgentDetailResponse> = sqlx::query_as(
+) -> Result<Option<AgentDetailRow>, sqlx::Error> {
+    let row: Option<AgentDetailRow> = sqlx::query_as(
         r#"
         SELECT
             a.agent_id,

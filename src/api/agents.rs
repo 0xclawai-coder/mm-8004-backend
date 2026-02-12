@@ -8,8 +8,8 @@ use axum::{
 
 use crate::db;
 use crate::types::{
-    ActivityParams, ActivityResponse, AgentListParams, AgentListResponse, ErrorResponse,
-    PaginationParams, ReputationParams, ReputationResponse,
+    ActivityParams, ActivityResponse, AgentDetailResponse, AgentListParams, AgentListResponse,
+    ErrorResponse, PaginationParams, ReputationParams, ReputationResponse,
 };
 use crate::AppState;
 
@@ -118,7 +118,15 @@ async fn get_agent(
         })?;
 
     match agent {
-        Some(a) => Ok(Json(a)),
+        Some(a) => {
+            let scores = db::agents::get_scores_by_tag(&state.pool, agent_id, chain_id)
+                .await
+                .unwrap_or_default();
+            Ok(Json(AgentDetailResponse {
+                agent: a,
+                scores,
+            }))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
