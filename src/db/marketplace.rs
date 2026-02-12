@@ -103,18 +103,20 @@ pub async fn get_listings(
     limit: i64,
 ) -> Result<(Vec<MarketplaceListing>, i64), sqlx::Error> {
     let order_clause = match sort {
-        "price_asc" => "price ASC",
-        "price_desc" => "price DESC",
-        _ => "block_number DESC",
+        "price_asc" => "l.price ASC",
+        "price_desc" => "l.price DESC",
+        _ => "l.block_number DESC",
     };
 
     let query = format!(
         r#"
-        SELECT * FROM marketplace_listings
-        WHERE status = $1
-          AND ($2::INT IS NULL OR chain_id = $2)
-          AND ($3::TEXT IS NULL OR nft_contract = $3)
-          AND ($4::TEXT IS NULL OR seller = $4)
+        SELECT l.*, a.name AS agent_name, a.image AS agent_image
+        FROM marketplace_listings l
+        LEFT JOIN agents a ON a.agent_id = l.token_id::BIGINT AND a.chain_id = l.chain_id
+        WHERE l.status = $1
+          AND ($2::INT IS NULL OR l.chain_id = $2)
+          AND ($3::TEXT IS NULL OR l.nft_contract = $3)
+          AND ($4::TEXT IS NULL OR l.seller = $4)
         ORDER BY {}
         LIMIT $5 OFFSET $6
         "#,
@@ -541,18 +543,20 @@ pub async fn get_auctions(
     limit: i64,
 ) -> Result<(Vec<MarketplaceAuction>, i64), sqlx::Error> {
     let order_clause = match sort {
-        "ending_soon" => "end_time ASC",
-        "highest_bid" => "highest_bid DESC NULLS LAST",
-        _ => "block_number DESC",
+        "ending_soon" => "a.end_time ASC",
+        "highest_bid" => "a.highest_bid DESC NULLS LAST",
+        _ => "a.block_number DESC",
     };
 
     let query = format!(
         r#"
-        SELECT * FROM marketplace_auctions
-        WHERE ($1::INT IS NULL OR chain_id = $1)
-          AND ($2::TEXT IS NULL OR nft_contract = $2)
-          AND ($3::TEXT IS NULL OR seller = $3)
-          AND ($4::TEXT IS NULL OR status = $4)
+        SELECT a.*, ag.name AS agent_name, ag.image AS agent_image
+        FROM marketplace_auctions a
+        LEFT JOIN agents ag ON ag.agent_id = a.token_id::BIGINT AND ag.chain_id = a.chain_id
+        WHERE ($1::INT IS NULL OR a.chain_id = $1)
+          AND ($2::TEXT IS NULL OR a.nft_contract = $2)
+          AND ($3::TEXT IS NULL OR a.seller = $3)
+          AND ($4::TEXT IS NULL OR a.status = $4)
         ORDER BY {}
         LIMIT $5 OFFSET $6
         "#,

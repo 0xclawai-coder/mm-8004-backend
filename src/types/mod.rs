@@ -116,6 +116,10 @@ pub struct MarketplaceListing {
     pub tx_hash: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub agent_name: Option<String>,
+    #[sqlx(default)]
+    pub agent_image: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -183,6 +187,10 @@ pub struct MarketplaceAuction {
     pub tx_hash: String,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub agent_name: Option<String>,
+    #[sqlx(default)]
+    pub agent_image: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
