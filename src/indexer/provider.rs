@@ -12,8 +12,10 @@ pub struct ChainConfig {
     pub reputation_address: Address,
     /// MoltMarketplace contract address (None if not deployed yet).
     pub marketplace_address: Option<Address>,
-    /// Block number where the contracts were deployed. Indexer starts from here.
+    /// Block number where the identity/reputation contracts were deployed. Indexer starts from here.
     pub start_block: u64,
+    /// Block number where the marketplace contract was deployed (defaults to start_block).
+    pub marketplace_start_block: Option<u64>,
 }
 
 /// The alloy HTTP provider type returned by ProviderBuilder::new().connect_http().
@@ -98,6 +100,7 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
                 .expect("Invalid mainnet reputation address"),
             marketplace_address,
             start_block: 52_952_790,
+            marketplace_start_block: Some(54_839_731),
         });
     }
 
@@ -120,6 +123,7 @@ pub fn get_chain_configs() -> Vec<ChainConfig> {
                 .expect("Invalid testnet reputation address"),
             marketplace_address,
             start_block: 10_391_697,
+            marketplace_start_block: Some(12_269_357),
         });
     }
 

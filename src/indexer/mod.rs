@@ -101,9 +101,10 @@ async fn index_chain(pool: &PgPool, chain: &ChainConfig) -> Result<bool, Box<dyn
         .await?
         .unwrap_or(chain.start_block as i64 - 1);
     let marketplace_last = if let Some(ref addr) = marketplace_addr {
+        let mp_start = chain.marketplace_start_block.unwrap_or(chain.start_block);
         crate::db::indexer_state::get_last_block(pool, chain.chain_id, addr)
             .await?
-            .unwrap_or(chain.start_block as i64 - 1)
+            .unwrap_or(mp_start as i64 - 1)
     } else {
         latest_block as i64 // treated as caught up
     };
