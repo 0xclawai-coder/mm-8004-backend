@@ -54,6 +54,22 @@ pub async fn run_indexer(pool: PgPool) {
         );
     }
 
+    // Sync marketplace config from on-chain at startup (initialize() doesn't emit events)
+    for chain in &chains {
+        if chain.marketplace_address.is_some() {
+            match provider::create_provider(chain) {
+                Ok(prov) => {
+                    if let Err(e) = marketplace::sync_marketplace_config(&pool, &prov, chain).await {
+                        tracing::error!(chain_id = chain.chain_id, "Failed to sync marketplace config: {:?}", e);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(chain_id = chain.chain_id, "Failed to create provider for config sync: {:?}", e);
+                }
+            }
+        }
+    }
+
     loop {
         let mut all_caught_up = true;
         for chain in &chains {

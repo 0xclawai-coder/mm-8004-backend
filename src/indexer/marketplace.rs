@@ -515,14 +515,42 @@ pub async fn index_marketplace_events(
 
                 tracing::info!(chain_id = chain.chain_id, "BundleListed #{} ({} items)", bundle_id, item_count);
 
-                // BundleListed doesn't include nft_contracts/token_ids arrays in event
-                // We store with empty arrays; a future read-from-contract step can fill them
+                // BundleListed event doesn't include nft arrays — read from contract via getBundleListing()
+                let (nft_contracts, token_ids) = {
+                    use alloy::sol_types::SolCall;
+                    let call = MoltMarketplace::getBundleListingCall {
+                        bundleId: alloy::primitives::U256::from(bundle_id),
+                    };
+                    let tx = alloy::rpc::types::TransactionRequest::default()
+                        .to(marketplace_address)
+                        .input(alloy::primitives::Bytes::from(call.abi_encode()).into());
+                    match provider.call(tx).await {
+                        Ok(result_bytes) => {
+                            match MoltMarketplace::getBundleListingCall::abi_decode_returns(&result_bytes) {
+                                Ok(decoded) => {
+                                    let nfts: Vec<String> = decoded.nftContracts.iter().map(|a| format!("{:#x}", a)).collect();
+                                    let ids: Vec<BigDecimal> = decoded.tokenIds.iter().map(|id| BigDecimal::from_str(&id.to_string()).unwrap_or_default()).collect();
+                                    (nfts, ids)
+                                }
+                                Err(err) => {
+                                    tracing::warn!("Failed to decode bundle {} response: {:?}", bundle_id, err);
+                                    (vec![], vec![])
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            tracing::warn!("Failed to read bundle {} from contract: {:?}", bundle_id, err);
+                            (vec![], vec![])
+                        }
+                    }
+                };
+
                 let new_bundle = NewMarketplaceBundle {
                     bundle_id,
                     chain_id: chain.chain_id,
                     seller,
-                    nft_contracts: vec![],
-                    token_ids: vec![],
+                    nft_contracts,
+                    token_ids,
                     payment_token,
                     price,
                     expiry,
@@ -645,4 +673,63 @@ async fn maybe_insert_agent_activity(
     if let Err(e) = db::activity::insert_activity(pool, &activity).await {
         tracing::error!("Failed to insert {} activity for agent {}: {:?}", event_type, agent_id, e);
     }
+}
+
+/// Read current marketplace config (platformFeeBps, feeRecipient) from on-chain
+/// and upsert into the DB. Called at indexer startup to ensure config is in sync
+/// even if initialize() didn't emit events.
+pub async fn sync_marketplace_config(
+    pool: &PgPool,
+    provider: &HttpProvider,
+    chain: &ChainConfig,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let marketplace_address = match chain.marketplace_address {
+        Some(addr) => addr,
+        None => return Ok(()),
+    };
+
+    use alloy::sol_types::SolCall;
+
+    // Read platformFeeBps
+    let fee_call = MoltMarketplace::platformFeeBpsCall {};
+    let fee_tx = alloy::rpc::types::TransactionRequest::default()
+        .to(marketplace_address)
+        .input(alloy::primitives::Bytes::from(fee_call.abi_encode()).into());
+    let fee_bps = match provider.call(fee_tx).await {
+        Ok(bytes) => {
+            match MoltMarketplace::platformFeeBpsCall::abi_decode_returns(&bytes) {
+                Ok(decoded) => Some(decoded.to::<u32>() as i32),
+                Err(e) => { tracing::warn!("Failed to decode platformFeeBps: {:?}", e); None }
+            }
+        }
+        Err(e) => { tracing::warn!("Failed to read platformFeeBps: {:?}", e); None }
+    };
+
+    // Read feeRecipient
+    let recipient_call = MoltMarketplace::feeRecipientCall {};
+    let recipient_tx = alloy::rpc::types::TransactionRequest::default()
+        .to(marketplace_address)
+        .input(alloy::primitives::Bytes::from(recipient_call.abi_encode()).into());
+    let fee_recipient = match provider.call(recipient_tx).await {
+        Ok(bytes) => {
+            match MoltMarketplace::feeRecipientCall::abi_decode_returns(&bytes) {
+                Ok(decoded) => Some(format!("{:#x}", decoded)),
+                Err(e) => { tracing::warn!("Failed to decode feeRecipient: {:?}", e); None }
+            }
+        }
+        Err(e) => { tracing::warn!("Failed to read feeRecipient: {:?}", e); None }
+    };
+
+    if fee_bps.is_some() || fee_recipient.is_some() {
+        tracing::info!(
+            chain_id = chain.chain_id,
+            "Synced marketplace config: fee={:?} bps, recipient={:?}",
+            fee_bps, fee_recipient
+        );
+        db::marketplace::upsert_marketplace_config(
+            pool, chain.chain_id, fee_bps, fee_recipient.as_deref(),
+        ).await?;
+    }
+
+    Ok(())
 }
