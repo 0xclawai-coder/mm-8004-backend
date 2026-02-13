@@ -16,12 +16,13 @@ pub const BLOCK_BATCH_SIZE: u64 = 100;
 /// Total blocks per cycle = BLOCK_BATCH_SIZE * PARALLEL_BATCHES (e.g., 100 * 10 = 1000).
 pub const PARALLEL_BATCHES: u64 = 10;
 
-/// Poll interval between indexer cycles (in seconds).
+/// Poll interval between indexer cycles (in milliseconds).
 /// Only applies when fully caught up to latest block.
-pub const POLL_INTERVAL_SECS: u64 = 2;
+/// Monad has ~1s block time, so 500ms keeps us responsive.
+pub const POLL_INTERVAL_MS: u64 = 500;
 
 /// Run the indexer loop for all configured chains.
-/// This function runs forever, polling for new events every POLL_INTERVAL_SECS.
+/// This function runs forever, polling for new events every POLL_INTERVAL_MS.
 pub async fn run_indexer(pool: PgPool) {
     let chains = provider::get_chain_configs();
 
@@ -31,11 +32,11 @@ pub async fn run_indexer(pool: PgPool) {
     }
 
     tracing::info!(
-        "Starting indexer for {} chain(s) | batch_size={} | parallel={} | poll_interval={}s",
+        "Starting indexer for {} chain(s) | batch_size={} | parallel={} | poll_interval={}ms",
         chains.len(),
         BLOCK_BATCH_SIZE,
         PARALLEL_BATCHES,
-        POLL_INTERVAL_SECS
+        POLL_INTERVAL_MS
     );
     for chain in &chains {
         let masked_rpc = if chain.rpc_url.len() > 20 {
@@ -92,7 +93,7 @@ pub async fn run_indexer(pool: PgPool) {
 
         // Only sleep when fully caught up to latest block
         if all_caught_up {
-            tokio::time::sleep(std::time::Duration::from_secs(POLL_INTERVAL_SECS)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
         }
     }
 }
