@@ -239,7 +239,28 @@ async fn get_auction(
         .map_err(map_err)?;
 
     match result {
-        Some((auction, bids)) => Ok(Json(MarketplaceAuctionDetailResponse { auction, bids })),
+        Some((auction, bids)) => {
+            // Embed agent data to avoid a second API call from frontend
+            let token_id_i64 = auction.token_id.to_string().parse::<i64>().unwrap_or(0);
+            let agent = db::agents::get_agent_by_id(&state.pool, token_id_i64, chain_id)
+                .await
+                .ok()
+                .flatten();
+            let scores = if agent.is_some() {
+                db::agents::get_scores_by_tag(&state.pool, token_id_i64, chain_id)
+                    .await
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
+            let mut response = serde_json::to_value(&MarketplaceAuctionDetailResponse { auction, bids }).unwrap();
+            if let Some(a) = agent {
+                let agent_detail = crate::types::AgentDetailResponse { agent: a, scores };
+                response["agent"] = serde_json::to_value(&agent_detail).unwrap();
+            }
+            Ok(Json(response))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
