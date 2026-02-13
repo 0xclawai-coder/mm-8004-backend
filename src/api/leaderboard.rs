@@ -39,7 +39,7 @@ async fn get_leaderboard(
           AND ($1::INT IS NULL OR a.chain_id = $1)
           AND ($2::TEXT IS NULL OR (
                 CASE WHEN $2 = 'others'
-                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    THEN (a.categories IS NULL OR cardinality(a.categories) = 0 OR NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao']))
                     ELSE $2 = ANY(a.categories)
                 END
             ))

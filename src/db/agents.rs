@@ -46,7 +46,7 @@ pub async fn get_agents(
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR (
                 CASE WHEN $3 = 'others'
-                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    THEN (a.categories IS NULL OR cardinality(a.categories) = 0 OR NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao']))
                     ELSE $3 = ANY(a.categories)
                 END
             ))
@@ -78,7 +78,7 @@ pub async fn get_agents(
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR (
                 CASE WHEN $3 = 'others'
-                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    THEN (a.categories IS NULL OR cardinality(a.categories) = 0 OR NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao']))
                     ELSE $3 = ANY(a.categories)
                 END
             ))
