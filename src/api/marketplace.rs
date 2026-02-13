@@ -118,7 +118,28 @@ async fn get_listing(
         .map_err(map_err)?;
 
     match listing {
-        Some(l) => Ok(Json(l)),
+        Some(l) => {
+            // Embed agent data in the listing response to avoid a second API call
+            let token_id_i64 = l.token_id.to_string().parse::<i64>().unwrap_or(0);
+            let agent = db::agents::get_agent_by_id(&state.pool, token_id_i64, chain_id)
+                .await
+                .ok()
+                .flatten();
+            let scores = if agent.is_some() {
+                db::agents::get_scores_by_tag(&state.pool, token_id_i64, chain_id)
+                    .await
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
+            let mut response = serde_json::to_value(&l).unwrap();
+            if let Some(a) = agent {
+                let agent_detail = crate::types::AgentDetailResponse { agent: a, scores };
+                response["agent"] = serde_json::to_value(&agent_detail).unwrap();
+            }
+            Ok(Json(response))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
