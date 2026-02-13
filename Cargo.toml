@@ -18,3 +18,5 @@ dotenvy = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
 bigdecimal = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+base64 = "0.22"
+urlencoding = "2"
