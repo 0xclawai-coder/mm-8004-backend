@@ -942,26 +942,20 @@ pub async fn get_user_portfolio(
 // ─── Marketplace Stats ──────────────────────────────────────────────────
 
 pub async fn get_marketplace_stats(pool: &PgPool) -> Result<MarketplaceStatsResponse, sqlx::Error> {
-    let (total_listings,): (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings")
-            .fetch_one(pool)
-            .await?;
-
-    let (active_listings,): (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings WHERE status = 'Active'")
-            .fetch_one(pool)
-            .await?;
-
-    let (total_sales,): (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM marketplace_listings WHERE status = 'Sold'")
-            .fetch_one(pool)
-            .await?;
-
-    let total_volume: BigDecimal = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(sold_price), 0) FROM marketplace_listings WHERE status = 'Sold'",
-    )
-    .fetch_one(pool)
-    .await?;
+    // Combined marketplace listing stats in a single query (was 4 separate queries)
+    let (total_listings, active_listings, total_sales, total_volume): (i64, i64, i64, BigDecimal) =
+        sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*),
+                COUNT(*) FILTER (WHERE status = 'Active'),
+                COUNT(*) FILTER (WHERE status = 'Sold'),
+                COALESCE(SUM(sold_price) FILTER (WHERE status = 'Sold'), 0)
+            FROM marketplace_listings
+            "#,
+        )
+        .fetch_one(pool)
+        .await?;
 
     let (active_auctions,): (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM marketplace_auctions WHERE status = 'Active'")

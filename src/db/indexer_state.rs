@@ -22,6 +22,7 @@ pub async fn get_last_block(
 }
 
 /// Upsert the last indexed block number cursor for a chain/contract pair.
+#[allow(dead_code)] // Convenience wrapper, kept for potential future use
 pub async fn update_last_block(
     pool: &PgPool,
     chain_id: i32,

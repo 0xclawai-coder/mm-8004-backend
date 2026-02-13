@@ -9,11 +9,13 @@ pub async fn get_agents(
     chain_id: Option<i32>,
     search: Option<&str>,
     category: Option<&str>,
+    owner: Option<&str>,
     sort: &str,
     offset: i64,
     limit: i64,
 ) -> Result<(Vec<AgentListItem>, i64), sqlx::Error> {
     // Build the ORDER BY clause based on sort parameter
+    // SAFETY: order_clause is from a hardcoded whitelist, not user input
     let order_clause = match sort {
         "score" => "reputation_score DESC NULLS LAST",
         "name" => "a.name ASC NULLS LAST",
@@ -43,9 +45,10 @@ pub async fn get_agents(
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
+            AND ($4::TEXT IS NULL OR a.owner = $4)
         GROUP BY a.id
         ORDER BY {}
-        LIMIT $4 OFFSET $5
+        LIMIT $5 OFFSET $6
         "#,
         order_clause
     );
@@ -54,6 +57,7 @@ pub async fn get_agents(
         .bind(chain_id)
         .bind(search)
         .bind(category)
+        .bind(owner)
         .bind(limit)
         .bind(offset)
         .fetch_all(pool)
@@ -68,11 +72,13 @@ pub async fn get_agents(
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
+            AND ($4::TEXT IS NULL OR a.owner = $4)
         "#,
     )
     .bind(chain_id)
     .bind(search)
     .bind(category)
+    .bind(owner)
     .fetch_one(pool)
     .await?;
 

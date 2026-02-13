@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 // ─── Database Models ───────────────────────────────────────────────────
 
+#[allow(dead_code)] // Constructed by sqlx FromRow deserialization
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Agent {
     pub id: i32,
@@ -27,6 +28,7 @@ pub struct Agent {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
+#[allow(dead_code)] // May be used for metadata deserialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMetadata {
     pub version: Option<String>,
@@ -34,6 +36,7 @@ pub struct AgentMetadata {
     pub capabilities: Option<Vec<String>>,
 }
 
+#[allow(dead_code)] // Part of AgentMetadata schema
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentEndpoint {
     pub url: String,
@@ -61,6 +64,7 @@ pub struct Feedback {
     pub created_at: Option<DateTime<Utc>>,
 }
 
+#[allow(dead_code)] // Constructed by sqlx FromRow deserialization
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct FeedbackResponse {
     pub id: i32,
@@ -103,6 +107,7 @@ pub struct GlobalActivity {
     pub agent_image: Option<String>,
 }
 
+#[allow(dead_code)] // Constructed by sqlx FromRow deserialization
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct IndexerState {
     pub chain_id: i32,
@@ -522,6 +527,7 @@ pub struct AgentListParams {
     pub chain_id: Option<i32>,
     pub search: Option<String>,
     pub category: Option<String>,
+    pub owner: Option<String>,
     pub sort: Option<String>,
     pub page: Option<i64>,
     pub limit: Option<i64>,

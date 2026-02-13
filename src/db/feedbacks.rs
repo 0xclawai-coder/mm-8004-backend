@@ -17,6 +17,7 @@ pub async fn get_feedbacks_for_agent(
         _ => None, // "all"
     };
 
+    // SAFETY: interval_str is from a hardcoded whitelist, not user input
     let feedbacks: Vec<Feedback> = if let Some(interval_str) = interval {
         let query = format!(
             r#"
@@ -27,6 +28,7 @@ pub async fn get_feedbacks_for_agent(
             WHERE agent_id = $1 AND chain_id = $2
               AND created_at >= NOW() - INTERVAL '{}'
             ORDER BY created_at DESC
+            LIMIT 500
             "#,
             interval_str
         );
@@ -36,6 +38,7 @@ pub async fn get_feedbacks_for_agent(
             .fetch_all(pool)
             .await?
     } else {
+        // "all" range — still cap at 500 to prevent unbounded responses
         sqlx::query_as(
             r#"
             SELECT id, agent_id, chain_id, client_address, feedback_index,
@@ -44,6 +47,7 @@ pub async fn get_feedbacks_for_agent(
             FROM feedbacks
             WHERE agent_id = $1 AND chain_id = $2
             ORDER BY created_at DESC
+            LIMIT 500
             "#,
         )
         .bind(agent_id)
@@ -69,6 +73,7 @@ pub async fn get_reputation_history(
         _ => None,
     };
 
+    // SAFETY: interval_str is from a hardcoded whitelist, not user input
     let rows: Vec<ReputationHistoryPoint> = if let Some(interval_str) = interval {
         let query = format!(
             r#"
@@ -81,6 +86,7 @@ pub async fn get_reputation_history(
               AND created_at >= NOW() - INTERVAL '{}'
             GROUP BY DATE(created_at)
             ORDER BY date ASC
+            LIMIT 365
             "#,
             interval_str
         );
@@ -90,6 +96,7 @@ pub async fn get_reputation_history(
             .fetch_all(pool)
             .await?
     } else {
+        // "all" range — cap at 365 days of history to prevent unbounded results
         sqlx::query_as(
             r#"
             SELECT
@@ -100,6 +107,7 @@ pub async fn get_reputation_history(
             WHERE agent_id = $1 AND chain_id = $2
             GROUP BY DATE(created_at)
             ORDER BY date ASC
+            LIMIT 365
             "#,
         )
         .bind(agent_id)

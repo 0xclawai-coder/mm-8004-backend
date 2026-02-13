@@ -71,6 +71,7 @@ async fn list_agents(
         params.chain_id,
         params.search.as_deref(),
         params.category.as_deref(),
+        params.owner.as_deref(),
         params.sort(),
         params.offset(),
         params.limit(),

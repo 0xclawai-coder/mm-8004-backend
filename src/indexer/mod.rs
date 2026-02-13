@@ -284,7 +284,7 @@ async fn index_contract_parallel(
         let chain = chain.clone();
         let from = *from;
         let to = *to;
-        let contract_type = contract_type;
+        // contract_type is Copy, no need to rebind
         // We need to create a new provider per task since HttpProvider is not Send-safe across awaits
         // in different tasks. Instead, share the provider ref — alloy providers are Send+Sync.
         let prov = provider::create_provider(&chain)?;

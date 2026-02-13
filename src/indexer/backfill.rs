@@ -102,7 +102,7 @@ pub async fn backfill_block_timestamps(pool: &PgPool) {
         }
 
         filled += 1;
-        if filled % 50 == 0 {
+        if filled.is_multiple_of(50) {
             tracing::info!("Block timestamp backfill progress: {}/{}", filled, rows.len());
         }
     }
