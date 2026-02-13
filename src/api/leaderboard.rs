@@ -37,7 +37,12 @@ async fn get_leaderboard(
         LEFT JOIN feedbacks f ON a.agent_id = f.agent_id AND a.chain_id = f.chain_id
         WHERE a.active = true
           AND ($1::INT IS NULL OR a.chain_id = $1)
-          AND ($2::TEXT IS NULL OR $2 = ANY(a.categories))
+          AND ($2::TEXT IS NULL OR (
+                CASE WHEN $2 = 'others'
+                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    ELSE $2 = ANY(a.categories)
+                END
+            ))
         GROUP BY a.id
         HAVING COUNT(CASE WHEN f.revoked = false THEN 1 ELSE NULL END) > 0
         ORDER BY reputation_score DESC NULLS LAST
