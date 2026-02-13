@@ -45,7 +45,7 @@ pub async fn get_agents(
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
-            AND ($4::TEXT IS NULL OR a.owner = $4)
+            AND ($4::TEXT IS NULL OR LOWER(a.owner) = LOWER($4))
         GROUP BY a.id
         ORDER BY {}
         LIMIT $5 OFFSET $6
@@ -72,7 +72,7 @@ pub async fn get_agents(
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
             AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
-            AND ($4::TEXT IS NULL OR a.owner = $4)
+            AND ($4::TEXT IS NULL OR LOWER(a.owner) = LOWER($4))
         "#,
     )
     .bind(chain_id)
