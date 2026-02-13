@@ -44,7 +44,12 @@ pub async fn get_agents(
         WHERE 1=1
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
-            AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
+            AND ($3::TEXT IS NULL OR (
+                CASE WHEN $3 = 'others'
+                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    ELSE $3 = ANY(a.categories)
+                END
+            ))
             AND ($4::TEXT IS NULL OR LOWER(a.owner) = LOWER($4))
         GROUP BY a.id
         ORDER BY {}
@@ -71,7 +76,12 @@ pub async fn get_agents(
         WHERE 1=1
             AND ($1::INT IS NULL OR a.chain_id = $1)
             AND ($2::TEXT IS NULL OR a.name ILIKE '%' || $2 || '%' OR a.description ILIKE '%' || $2 || '%')
-            AND ($3::TEXT IS NULL OR $3 = ANY(a.categories))
+            AND ($3::TEXT IS NULL OR (
+                CASE WHEN $3 = 'others'
+                    THEN NOT (a.categories && ARRAY['defi','analytics','security','identity','trading','ai','compute','gaming','social','dao'])
+                    ELSE $3 = ANY(a.categories)
+                END
+            ))
             AND ($4::TEXT IS NULL OR LOWER(a.owner) = LOWER($4))
         "#,
     )
