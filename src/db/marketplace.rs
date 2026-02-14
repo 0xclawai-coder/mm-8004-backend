@@ -543,7 +543,7 @@ pub async fn get_auctions(
     limit: i64,
 ) -> Result<(Vec<MarketplaceAuction>, i64), sqlx::Error> {
     let order_clause = match sort {
-        "ending_soon" => "a.end_time ASC",
+        "ending_soon" => "CASE WHEN a.status = 'Active' THEN 0 ELSE 1 END ASC, a.end_time ASC",
         "highest_bid" => "a.highest_bid DESC NULLS LAST",
         _ => "a.block_number DESC",
     };
