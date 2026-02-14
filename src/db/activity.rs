@@ -80,7 +80,7 @@ pub async fn get_global_activities(
             OR ($1 = 'marketplace' AND a.event_type LIKE 'marketplace:%')
             OR a.event_type = $1)
           AND ($4::INT IS NULL OR a.chain_id = $4)
-        ORDER BY a.block_number DESC, a.log_index DESC
+        ORDER BY COALESCE(a.block_timestamp, a.created_at) DESC, a.id DESC
         LIMIT $2 OFFSET $3
         "#,
     )
