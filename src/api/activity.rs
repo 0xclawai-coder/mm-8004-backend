@@ -22,6 +22,7 @@ async fn get_global_activity(
     let (activities, total) = db::activity::get_global_activities(
         &state.pool,
         params.event_type.as_deref(),
+        params.chain_id,
         params.offset(),
         params.limit(),
     )

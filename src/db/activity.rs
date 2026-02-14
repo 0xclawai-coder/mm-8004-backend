@@ -62,6 +62,7 @@ pub async fn get_activities(
 pub async fn get_global_activities(
     pool: &PgPool,
     event_type: Option<&str>,
+    chain_id: Option<i32>,
     offset: i64,
     limit: i64,
 ) -> Result<(Vec<GlobalActivity>, i64), sqlx::Error> {
@@ -78,6 +79,7 @@ pub async fn get_global_activities(
             OR ($1 = 'reputation' AND a.event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
             OR ($1 = 'marketplace' AND a.event_type LIKE 'marketplace:%')
             OR a.event_type = $1)
+          AND ($4::INT IS NULL OR a.chain_id = $4)
         ORDER BY a.block_number DESC, a.log_index DESC
         LIMIT $2 OFFSET $3
         "#,
@@ -85,6 +87,7 @@ pub async fn get_global_activities(
     .bind(event_type)
     .bind(limit)
     .bind(offset)
+    .bind(chain_id)
     .fetch_all(pool)
     .await?;
 
@@ -97,9 +100,11 @@ pub async fn get_global_activities(
             OR ($1 = 'reputation' AND a.event_type IN ('NewFeedback', 'FeedbackRevoked', 'ResponseAppended'))
             OR ($1 = 'marketplace' AND a.event_type LIKE 'marketplace:%')
             OR a.event_type = $1)
+          AND ($2::INT IS NULL OR a.chain_id = $2)
         "#,
     )
     .bind(event_type)
+    .bind(chain_id)
     .fetch_one(pool)
     .await?;
 

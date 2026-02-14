@@ -565,6 +565,7 @@ impl ReputationParams {
 #[derive(Debug, Deserialize)]
 pub struct ActivityParams {
     pub event_type: Option<String>,
+    pub chain_id: Option<i32>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
 }
