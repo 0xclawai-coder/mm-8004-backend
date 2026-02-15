@@ -1,23 +1,52 @@
-# Backend Services
+# Molt Marketplace — Backend
 
-## Type
-API and data services layer
+## Tech Stack
+- Rust + Axum (HTTP server)
+- sqlx (PostgreSQL, async, type-safe)
+- alloy (Monad RPC, event indexing)
+- reqwest (metadata fetching)
+- tower-http (CORS)
+- tracing (structured logging)
 
-## Status
-Initial setup - technology stack to be determined
-
-## Planned Components
-- RESTful API endpoints
-- Database integration
-- Authentication/authorization
-- Business logic layer
-- Data processing services
-
-## Database
-Database type and schema to be determined based on requirements
-
-## Development Environment
-Setup instructions will be added once tech stack is chosen
+## Default Port
+3001
 
 ## Deployment
-Deployment configuration and procedures will be documented once infrastructure is determined
+Railway (nad-8004-backend-production.up.railway.app)
+
+## API Endpoints
+
+### Agent Identity
+- GET /api/agents — List agents (search, filter, sort, paginate)
+- GET /api/agents/:id — Agent detail (composite ID: {chainId}-{agentId})
+- GET /api/agents/:id/reputation — Reputation history + feedbacks
+- GET /api/agents/:id/activity — Agent activity log
+- GET /api/activity — Global activity feed
+- GET /api/leaderboard — Agents ranked by reputation
+- GET /api/stats — Global dashboard statistics
+
+### Marketplace
+- GET /api/marketplace/listings — Fixed-price NFT listings
+- GET /api/marketplace/listings/{id} — Listing detail
+- GET /api/marketplace/offers — ERC-20 offers
+- GET /api/marketplace/collection-offers — Collection-wide offers
+- GET /api/marketplace/auctions — English auctions
+- GET /api/marketplace/auctions/{id} — Auction detail with bids
+- GET /api/marketplace/dutch-auctions — Dutch auctions
+- GET /api/marketplace/bundles — Bundle listings
+- GET /api/marketplace/user/{address} — User portfolio
+- GET /api/marketplace/stats — Marketplace statistics
+
+## Key Modules
+- src/api/ — Route handlers (agents, marketplace, leaderboard, stats, activity)
+- src/db/ — Database queries (agents, feedbacks, activity, marketplace, indexer_state)
+- src/indexer/ — Monad event indexer (identity, reputation, marketplace)
+- src/types/ — Shared Rust types
+
+## Environment Variables
+- DATABASE_URL — PostgreSQL connection string
+- MONAD_MAINNET_RPC — Monad Mainnet RPC endpoint
+- MONAD_TESTNET_RPC — Monad Testnet RPC endpoint
+- CORS_ORIGINS — Allowed CORS origins (default: http://localhost:3000)
+- PORT — Server port (default: 3001)
+- RUST_LOG — Log level (default: info)
